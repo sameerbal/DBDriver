@@ -1,0 +1,320 @@
+package comparator;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Scanner;
+
+public class DBDriver {
+
+	static int Source_totalRows = 0;
+	static int Target_totalRows=0;
+	
+	private static Map<String, List<TableCellData>> readDB(ResultSet resultSet) throws SQLException {
+
+		ResultSetMetaData srcRSMD = resultSet.getMetaData();
+		Map<String, List<TableCellData>> readFileResult = new HashMap<String, List<TableCellData>>();
+
+		int srcColNum = srcRSMD.getColumnCount();
+		List<String> readPropertiesFile = readPropertiesFile();
+		while (resultSet.next()) {
+			List<TableCellData> data = new ArrayList<TableCellData>();
+			StringBuffer buffer = new StringBuffer();
+			for (int i = 1; i <= srcColNum; i++) {
+				String string = resultSet.getString(i);
+				//String string = (String) resultSet.getObject(i);
+				//System.out.println("THE OBJECT HANDLING STRING : "+string);
+			    if((readPropertiesFile != null && readPropertiesFile.contains("all"))||(readPropertiesFile != null && readPropertiesFile.contains(Integer.valueOf(i).toString())))
+			    {
+			    	buffer.append(string);
+			    	buffer.append("#");
+			       
+			    }
+			    TableCellData celldata = new TableCellData();
+				celldata.setCellValue(string);
+				celldata.setColumNumber(i);
+				data.add(celldata);
+
+			}
+			if (!readFileResult.containsKey(buffer.toString())) {
+				readFileResult.put(buffer.toString(), data);
+			}
+
+		}
+		return readFileResult;
+	}
+	
+	private static List<String> readPropertiesFile()
+	{
+		Properties prop = new Properties();
+		FileInputStream output = null;
+
+		try {
+			InputStream input = new FileInputStream("C:\\Users\\rr44273\\eclipse-workspace\\Prasanna_Comp\\src\\comparator\\Dynamic_PK_RoadMap.properties");
+		    prop.load(input);
+			String Source_PkHandler = prop.getProperty("MatchFix_Source_Query_PKHandler");
+			String[] Source_PkHandlerArray = Source_PkHandler.split("-");
+			return Arrays.asList(Source_PkHandlerArray[1].split(","));
+
+						
+
+		} catch (IOException io) {
+			io.printStackTrace();
+			return null;
+		} finally {
+			if (output != null) {
+				try {
+					output.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+
+	}
+	}
+	
+	
+	//get source row count
+		private static int getSourceRows(ResultSet SourceResultSet){
+		  //  int Source_totalRows = 0;
+		    try {
+		    	  //ResultSet rs = //Execute your query...
+		    	         // SourceResultSet.first();
+		    			//int rowCount = 0;
+		    			while ( SourceResultSet.next() )
+		    			{
+		    			    // Process the row.
+		    				//SourceResultSet.first();
+		    				Source_totalRows++;
+		    			}
+		    				    			
+		    			SourceResultSet.beforeFirst();
+		    			System.out.println("Source Table Total Rows count =  " + Source_totalRows);
+		    			
+		    			//SourceResultSet.TYPE_SCROLL_INSENSITIVE,
+		    		  //  ResultSet.CONCUR_READ_ONLY
+		    		    
+		    			return Source_totalRows;
+		    } 
+		    catch(Exception ex)  {
+		        System.out.println("The Source Table Row handling Exception : "+ex.getMessage());
+		    	return 0;
+		    }
+		   //System.out.println("Total Source Table Row counts = "+ Source_totalRows );
+		   //return Source_totalRows;
+		   
+		}
+		
+		
+		
+		//get source row count
+			private static int getTargetRows(ResultSet TargetResultSet){
+				// int Target_totalRows = 0;
+			    try {
+			    	  //ResultSet rs = //Execute your query...
+			    			  
+			    			//int rowCount = 0;
+			    	          
+			    			while ( TargetResultSet.next() )
+			    			{
+			    			    // Process the row.
+			    				//TargetResultSet.first();
+			    				Target_totalRows++;
+			    			}
+			    			
+			    			
+			    			TargetResultSet.beforeFirst();
+			    			  
+			    			System.out.println("Target Table Total Rows count =  " + Target_totalRows);
+			    			return Target_totalRows;
+			    			//TargetResultSet.first();
+			    } 
+			    catch(Exception ex)  {
+			    	 System.out.println("The Target Table Row handling Exception : "+ex.getMessage());
+			    	return 0;
+			    }
+			   
+			}
+			
+		
+	
+	
+
+	public static void main(String args[]) {
+		readPropertiesFile();
+		try {
+			Class.forName("oracle.jdbc.driver.OracleDriver");
+			Scanner getValue = new Scanner(System.in);
+
+			// get source DB user name and password
+			System.out.print("Enter Source DB UserName,Password: ");
+			String srcGetCred = getValue.nextLine();
+			String[] srcArrCred = srcGetCred.split(",");
+			String srcUserName = srcArrCred[0];
+			String srcPassword = srcArrCred[1];
+
+			// get target DB user name and password
+			System.out.print("Enter Target DB UserName,Password: ");
+			String trgGetCred = getValue.nextLine();
+			String[] trgArrCred = trgGetCred.split(",");
+			String trgUserName = trgArrCred[0];
+			String trgPassword = trgArrCred[1];
+
+			//ReportGenerator report = null;
+			//System.out.print("Selected Report Type Excel/HTML<E>:");
+			//String reportType = getValue.nextLine();
+			
+			/**
+			if (reportType != null && !reportType.trim().isEmpty() && reportType.equals("H")) {
+				report = new HTMLReportGenerator();
+			} else {
+				report = new ExcelReportGenerator();
+			}
+			**/
+			
+			// establish connection for source and target DB
+			Connection dbSourceConn = DriverManager.getConnection(
+					"jdbc:oracle:thin:@oraasmwp17-scan.nam.nsroot.net:8888:oprsk5u", srcUserName, srcPassword);
+			Connection dbTargetConn = DriverManager.getConnection(
+					"jdbc:oracle:thin:@oraasmwp17-scan.nam.nsroot.net:8888:oprsk5u", trgUserName, trgPassword);
+			// get source path and build SQL
+			String srcSQLPath = "C:\\Users\\rr44273\\Desktop\\Source\\006_s_mismatch.txt";
+			//"SQL\\001_t_mismatch.sql";
+			String srcRdPath = new String();
+			StringBuffer srcStrBuf = new StringBuffer();
+
+			FileReader srcFileRdr = new FileReader(new File(srcSQLPath));
+			BufferedReader srcBufRdr = new BufferedReader(srcFileRdr);
+
+			while ((srcRdPath = srcBufRdr.readLine()) != null) {
+				srcStrBuf.append(srcRdPath);
+			}
+			// get target path and build SQL
+			String trgSQLPath = "C:\\Users\\rr44273\\Desktop\\Target\\006_s_mismatch.txt";
+			//"SQL\\001_s_mismatch.sql";
+			String trgRdPath = new String();
+			StringBuffer trgStrBuf = new StringBuffer();
+
+			FileReader trgFileRdr = new FileReader(new File(trgSQLPath));
+			BufferedReader trgBufRdr = new BufferedReader(trgFileRdr);
+
+			while ((trgRdPath = trgBufRdr.readLine()) != null) {
+				trgStrBuf.append(trgRdPath);
+			}
+
+			// declare source and target statement
+			Statement srcStatement = dbSourceConn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+			Statement trgStatement = dbTargetConn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
+                    ResultSet.CONCUR_UPDATABLE);
+
+			// execute source and target SQL and pass the response to a result set
+			String srcSQL = srcStrBuf.toString();
+			String trgSQL = trgStrBuf.toString();
+
+			ResultSet srcResultSet = srcStatement.executeQuery(srcSQL);
+			ResultSet trgResultSet = trgStatement.executeQuery(trgSQL);
+			
+			//get total rows count from the source table before comparison
+			System.out.println("\n");
+			System.out.println("DB Comparator Process Started...");
+			System.out.println("\n");
+			
+			getSourceRows(srcResultSet);
+			
+			//get total rows count from the target table before comparison
+			getTargetRows(trgResultSet);
+			//trgResultSet.first();
+			
+			/**
+			 *  Row count Validation between source and target
+			 */
+			
+			
+			if(Source_totalRows!=Target_totalRows) {
+				System.out.println("Source and Target Row counts are Mismatched");
+				System.out.println("\n");
+			}
+			else {
+				
+				System.out.println("Source and Target Row counts are Matched");
+				System.out.println("\n");
+					
+			}
+		
+			
+
+			Map<String, List<TableCellData>> srcMap = readDB(srcResultSet);
+			Map<String, List<TableCellData>> targetMap = readDB(trgResultSet);
+			// System.out.println(srcMap);
+			// System.out.println(targetMap);
+
+			
+			ResultSetMetaData srcRSMD = srcResultSet.getMetaData();
+			int srcColNum = srcRSMD.getColumnCount();
+
+			List<String> headerColumns = new ArrayList<String>();
+			for (int i = 1; i <= srcColNum; i++) {
+
+				headerColumns.add(srcRSMD.getColumnLabel(i));
+
+			}
+			headerColumns.add("STATUS");
+
+			// Close the scanner
+			getValue.close();
+
+			// Close buffer reader
+			srcBufRdr.close();
+			trgBufRdr.close();
+
+			// Close DB connections
+			dbSourceConn.close();
+			dbTargetConn.close();
+
+			TableComparator compare = new TableComparatorImpl();
+			Map<String, List<TableCellData>> compareFiles = compare.compareFiles(targetMap, srcMap);
+			 //System.out.println(compareFiles);
+			
+			System.out.println("\n");
+			
+			for(Map.Entry entry:compareFiles.entrySet()){
+				  //  System.out.print(entry.getKey() + " :: " + entry.getValue());
+					
+				    System.out.println("My Primary Key is : "+entry.getKey());
+				   // System.out.println("\n");
+				    System.out.println("My Value is : "+entry.getValue());
+				   // System.out.println("\n");
+				   // System.out.println("Primary Key ::"+)
+				}
+
+			//report.setHeader(headerColumns);
+			// HTMLReportGenerator generate = new HTMLReportGenerator();
+			// generate.generateStatusReport(compareFiles);
+			//report.generateStatusReport(compareFiles);
+
+			System.out.println("\n");
+			System.out.println("Execution Completed...");
+		
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.out.println(e.getMessage());
+
+		}
+	}
+}
